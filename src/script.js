@@ -451,44 +451,79 @@
 
   // --- Import / Export ---
 
-  // Import function remains the same
   function importBouldersFromFile(file) {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
         const data = JSON.parse(e.target.result);
+        // Validate the overall structure slightly more flexibly
         if (!data || !Array.isArray(data.boulders)) {
-          // Allow import file to optionally have wall_info etc.
           throw new Error(
             'Invalid import file format. Expected JSON with a "boulders" array.'
           );
         }
 
-        let importedCount = 0,
-          skippedCount = 0;
+        let importedCount = 0;
+        let skippedCount = 0;
         const currentBoulderIds = new Set(state.boulders.map((b) => b.id));
+
         data.boulders.forEach((importedBoulder) => {
-          if (importedBoulder && importedBoulder.id && importedBoulder.moves) {
+          // --- Transformation Logic ---
+          // Validate the imported boulder structure based on the JSON format
+          if (
+            importedBoulder &&
+            importedBoulder.id &&
+            Array.isArray(importedBoulder.ordered_holds) && // Check for ordered_holds array
+            Array.isArray(importedBoulder.start_holds) && // Check start_holds
+            Array.isArray(importedBoulder.finish_holds) // Check finish_holds
+          ) {
             if (!currentBoulderIds.has(importedBoulder.id)) {
-              state.boulders.push(JSON.parse(JSON.stringify(importedBoulder)));
+              // Convert 'ordered_holds' array into the internal 'moves' array format
+              const internalMoves = importedBoulder.ordered_holds.map(
+                (holdId, index) => ({
+                  hold_id: holdId,
+                  move_number: index + 1, // Move numbers are 1-based
+                })
+              );
+
+              // Create the boulder object in the format expected by the internal state
+              const boulderForState = {
+                id: importedBoulder.id,
+                name: importedBoulder.name || "Unnamed Imported", // Use default if name missing
+                grade: importedBoulder.grade || "V?", // Use default
+                style: importedBoulder.style || "Other", // Use default
+                description: importedBoulder.description || "",
+                start_holds: importedBoulder.start_holds, // Assume valid array from check above
+                finish_holds: importedBoulder.finish_holds, // Assume valid array from check above
+                moves: internalMoves, // Use the newly created moves array
+              };
+
+              state.boulders.push(boulderForState); // Add the *transformed* boulder object
               currentBoulderIds.add(importedBoulder.id);
               importedCount++;
             } else {
+              // Skip if boulder ID already exists
               skippedCount++;
             }
           } else {
+            // Log skipped boulders due to invalid structure in the JSON file
+            console.warn(
+              "Skipping invalid boulder structure during import:",
+              importedBoulder
+            );
             skippedCount++;
           }
+          // --- End Transformation Logic ---
         });
 
         if (importedCount > 0) {
-          saveBouldersToStorage();
-          renderBoulderList();
-          updateUI();
+          saveBouldersToStorage(); // Save the newly merged list
+          renderBoulderList(); // Update the displayed list
+          updateUI(); // Update button states etc.
         }
         showToast(
-          `Imported ${importedCount} boulders. Skipped ${skippedCount} (duplicates/invalid).`,
+          `Imported ${importedCount} boulders. Skipped ${skippedCount} (duplicates or invalid format).`,
           4000
         );
       } catch (error) {
@@ -496,8 +531,9 @@
         showToast(`Import error: ${error.message}`, 5000);
       }
     };
-    reader.onerror = () =>
+    reader.onerror = () => {
       showToast(`Error reading import file: ${reader.error}`, 5000);
+    };
     reader.readAsText(file);
   }
 
