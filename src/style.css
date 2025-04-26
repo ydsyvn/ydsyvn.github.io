@@ -188,6 +188,36 @@ button.danger {
   fill-opacity: 0.7; /* Keep some transparency even when in boulder */
 }
 
+/* Invisible Click Targets */
+.hold-click-target {
+  fill: transparent; /* Absolutely no fill */
+  stroke: none; /* No stroke */
+  cursor: pointer;
+}
+/* Optional: Show targets on hover for debugging */
+/* .hold-click-target:hover {
+    fill: rgba(255, 0, 255, 0.2);
+    stroke: rgba(255, 0, 255, 0.5);
+    stroke-width: 1px;
+} */
+
+/* Visible Hold Polygon Styling (Applied to elements in #visible-holds-layer) */
+.visible-hold-polygon {
+  stroke: #000;
+  stroke-width: 1; /* Relative to SVG viewBox */
+  transition: stroke 0.2s ease, stroke-width 0.2s ease, fill-opacity 0.2s ease;
+  fill-opacity: 0.75; /* Make holds slightly transparent */
+  cursor: pointer; /* Should still be clickable */
+}
+.visible-hold-polygon:hover {
+  fill-opacity: 0.5;
+}
+.visible-hold-polygon.selected {
+  stroke: #ff00ff; /* Magenta */
+  stroke-width: 3; /* Thicker stroke */
+  fill-opacity: 0.85; /* Less transparent */
+}
+
 /* Sequence Markers */
 .sequence-marker {
   font-size: 18px;
