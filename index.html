@@ -8,7 +8,7 @@
     />
     <title>Boulder Setter App</title>
     <!-- Path to CSS is relative to this HTML file -->
-    <link rel="stylesheet" href="src/style.css" />
+    <link rel="stylesheet" href="style.css" />
     <style>
       body {
         overscroll-behavior-y: contain;
@@ -133,12 +133,10 @@
                     strokeWidth="0.5"
                     opacity="0.2"
                   />
-                  <!-- Grid lighter -->
                 </pattern>
               </defs>
 
               <!-- Background Image Layer -->
-              <!-- Path is relative to the HTML file location (src/) -->
               <image
                 id="wall-background-image"
                 href="../spraywall.jpg"
@@ -157,11 +155,14 @@
                 fill="url(#grid)"
                 opacity="0.5"
               />
-              <!-- Grid on top with opacity -->
 
-              <!-- Holds Layer -->
-              <g id="holds-layer"></g>
-              <!-- Sequence Markers Layer -->
+              <!-- Layer for INVISIBLE Click Targets -->
+              <g id="click-targets-layer"></g>
+
+              <!-- Layer for VISIBLE Hold Polygons -->
+              <g id="visible-holds-layer"></g>
+
+              <!-- Sequence Markers Layer (On top of visible holds) -->
               <g id="sequence-layer"></g>
             </svg>
           </div>
@@ -208,6 +209,6 @@
     <!-- Libraries (Panzoom) -->
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <!-- App Script (relative to this HTML file) -->
-    <script src="src/script.js" defer></script>
+    <script src="script.js" defer></script>
   </body>
 </html>
