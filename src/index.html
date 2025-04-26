@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+    <title>Boulder Setter App</title>
+    <!-- Path to CSS is relative to this HTML file -->
+    <link rel="stylesheet" href="style.css" />
+    <style>
+      body {
+        overscroll-behavior-y: contain;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Boulder Setter App</h1>
+
+      <!-- Top Controls: Loading happens automatically now -->
+      <div class="control-panel">
+        <div class="form-row">
+          <button id="btn-new-boulder" class="secondary">New Boulder</button>
+          <button id="btn-import-boulders" class="secondary">
+            Import Boulders (.json)
+          </button>
+          <button id="btn-export-all" class="secondary" disabled>
+            Export All Boulders
+          </button>
+        </div>
+        <!-- Removed Load Holds Data button -->
+      </div>
+
+      <!-- Boulder Information Panel -->
+      <div id="boulder-info" class="control-panel" style="display: none">
+        <h2>Current Boulder Details</h2>
+        <div class="form-group">
+          <label for="boulder-name">Boulder Name:</label>
+          <input
+            type="text"
+            id="boulder-name"
+            placeholder="Enter boulder name"
+          />
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="boulder-grade">Grade:</label>
+            <select id="boulder-grade">
+              <option value="V0">V0</option>
+              <option value="V1">V1</option>
+              <option value="V2">V2</option>
+              <option value="V3">V3</option>
+              <option value="V4" selected>V4</option>
+              <option value="V5">V5</option>
+              <option value="V6">V6</option>
+              <option value="V7">V7</option>
+              <option value="V8">V8</option>
+              <option value="V9">V9</option>
+              <option value="V10">V10</option>
+              <option value="V11">V11</option>
+              <option value="V12">V12</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="boulder-style">Style:</label>
+            <select id="boulder-style">
+              <option value="Technical" selected>Technical</option>
+              <option value="Power">Power</option>
+              <option value="Dynamic">Dynamic</option>
+              <option value="Slab">Slab</option>
+              <option value="Overhang">Overhang</option>
+              <option value="Crimpy">Crimpy</option>
+              <option value="Slopey">Slopey</option>
+              <option value="Compression">Compression</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="boulder-description">Description (optional):</label>
+          <input
+            type="text"
+            id="boulder-description"
+            placeholder="Short description or beta"
+          />
+        </div>
+        <button id="btn-save-boulder" disabled>Save Boulder</button>
+      </div>
+
+      <!-- Hold Interaction Panel -->
+      <div id="hold-actions" style="display: none">
+        <!-- Legend -->
+        <div class="hold-legend">
+          <div class="hold-type">
+            <div class="hold-color" style="background-color: #4caf50b3"></div>
+            Jug
+          </div>
+          <div class="hold-type">
+            <div class="hold-color" style="background-color: #f44336b3"></div>
+            Crimp
+          </div>
+          <div class="hold-type">
+            <div class="hold-color" style="background-color: #2196f3b3"></div>
+            Sloper
+          </div>
+          <div class="hold-type">
+            <div class="hold-color" style="background-color: #ff9800b3"></div>
+            Pinch
+          </div>
+          <div class="hold-type">
+            <div class="hold-color" style="background-color: #9c27b0b3"></div>
+            Other
+          </div>
+        </div>
+
+        <!-- Wall Container -->
+        <div class="wall-container-outer">
+          <div class="wall-container" id="wall-container">
+            <svg id="wall-svg" preserveAspectRatio="xMidYMid meet">
+              <defs>
+                <pattern
+                  id="grid"
+                  width="50"
+                  height="50"
+                  patternUnits="userSpaceOnUse"
+                >
+                  <path
+                    d="M 50 0 L 0 0 0 50"
+                    fill="none"
+                    stroke="#FFF"
+                    strokeWidth="0.5"
+                    opacity="0.2"
+                  />
+                  <!-- Grid lighter -->
+                </pattern>
+              </defs>
+
+              <!-- Background Image Layer -->
+              <!-- Path is relative to the HTML file location (src/) -->
+              <image
+                id="wall-background-image"
+                href="../spraywall.jpg"
+                x="0"
+                y="0"
+                width="100%"
+                height="100%"
+                preserveAspectRatio="xMidYMid meet"
+              />
+
+              <!-- Optional Grid Overlay -->
+              <rect
+                id="svg-bg-grid"
+                width="100%"
+                height="100%"
+                fill="url(#grid)"
+                opacity="0.5"
+              />
+              <!-- Grid on top with opacity -->
+
+              <!-- Holds Layer -->
+              <g id="holds-layer"></g>
+              <!-- Sequence Markers Layer -->
+              <g id="sequence-layer"></g>
+            </svg>
+          </div>
+          <!-- Wall Controls -->
+          <div class="wall-controls">
+            <button id="btn-reset-view" title="Reset View">🔄</button>
+          </div>
+        </div>
+
+        <!-- Selected Hold Info & Actions -->
+        <div class="control-panel selected-hold-panel">
+          <div id="selected-hold-info">Selected Hold: None</div>
+          <div class="form-row">
+            <button id="btn-mark-start" disabled>Mark as Start</button>
+            <button id="btn-mark-finish" disabled>Mark as Finish</button>
+            <button id="btn-remove-hold" class="danger" disabled>
+              Remove from Boulder
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Saved Boulders List -->
+      <div class="boulder-list">
+        <h2>Saved Boulders (<span id="boulder-count">0</span>)</h2>
+        <div id="boulder-items">
+          <p>Loading holds data...</p>
+          <!-- Initial message -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toast" class="toast"></div>
+
+    <!-- Hidden File Input for Importing Boulders -->
+    <input
+      type="file"
+      id="import-file-input"
+      style="display: none"
+      accept=".json"
+    />
+
+    <!-- Libraries (Panzoom) -->
+    <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
+    <!-- App Script (relative to this HTML file) -->
+    <script src="script.js" defer></script>
+  </body>
+</html>
