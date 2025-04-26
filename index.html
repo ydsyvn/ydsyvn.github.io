@@ -1,1155 +1,213 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"> <!-- Added user-scalable=no for better mobile experience -->
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
     <title>Boulder Setter App</title>
+    <!-- Path to CSS is relative to this HTML file -->
+    <link rel="stylesheet" href="style.css" />
     <style>
-        /* CSS remains the same as provided */
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: #f5f5f5;
-            overscroll-behavior: none; /* Prevent pull-to-refresh */
-        }
-        .container {
-            max-width: 100%;
-            padding: 15px;
-            box-sizing: border-box; /* Ensure padding doesn't overflow */
-        }
-        h1 {
-            text-align: center;
-            color: #333;
-            margin-bottom: 20px;
-        }
-        .wall-container {
-            position: relative;
-            width: 100%;
-            /* Max height to prevent excessive scrolling, adjust as needed */
-            max-height: 60vh;
-            overflow: auto; /* Enable panning */
-            background-color: #ddd;
-            border: 1px solid #999;
-            margin-bottom: 20px;
-            -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
-            touch-action: pan-x pan-y; /* Allow panning */
-        }
-        #wall-svg {
-            display: block;
-            background-color: #f0f0f0;
-            /* Width and height will be set dynamically, or use aspect ratio */
-            width: 100%;
-            height: auto;
-            cursor: grab;
-        }
-        #wall-svg:active {
-             cursor: grabbing;
-        }
-        .hold {
-            cursor: pointer;
-            transition: opacity 0.2s ease-in-out;
-        }
-        .hold:hover {
-            opacity: 0.7;
-        }
-        .hold.selected polygon {
-            stroke: #ff00ff; /* Magenta stroke for selected */
-            stroke-width: 3;
-        }
-        .hold.in-boulder polygon {
-            opacity: 1.0; /* Ensure holds in boulder are fully visible */
-        }
-        .hold.not-in-boulder polygon {
-             opacity: 0.3; /* Dim holds not part of the current boulder */
-        }
-        .control-panel {
-            background-color: white;
-            padding: 15px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
-        }
-        .boulder-list {
-            background-color: white;
-            padding: 15px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
-        }
-        .boulder-item {
-            padding: 10px;
-            border-bottom: 1px solid #eee;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .boulder-item:last-child {
-            border-bottom: none;
-        }
-        .boulder-item-active {
-            background-color: #e6f7ff;
-            font-weight: bold;
-        }
-        button {
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            padding: 10px 15px;
-            text-align: center;
-            text-decoration: none;
-            display: inline-block;
-            font-size: 16px;
-            margin: 4px 2px;
-            cursor: pointer;
-            border-radius: 5px;
-            transition: background-color 0.2s;
-        }
-         button:active {
-            transform: scale(0.98); /* Slight shrink effect on tap */
-         }
-        button:disabled {
-            background-color: #cccccc;
-            cursor: not-allowed;
-            opacity: 0.6;
-        }
-        button.secondary {
-            background-color: #2196F3;
-        }
-        button.danger {
-            background-color: #f44336;
-        }
-        select, input[type="text"] { /* Targeted text inputs */
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            width: 100%;
-            box-sizing: border-box;
-            margin-bottom: 10px;
-            font-size: 16px; /* Better mobile readability */
-        }
-        label {
-             display: block;
-             margin-bottom: 5px;
-             font-weight: bold;
-             color: #555;
-        }
-        .form-group {
-            margin-bottom: 15px;
-        }
-        .form-row {
-            display: flex;
-            flex-wrap: wrap; /* Allow wrapping on small screens */
-            gap: 10px;
-            margin-bottom: 10px;
-        }
-        .form-row > * {
-            flex: 1 1 120px; /* Allow shrinking and set a base width */
-        }
-        .hold-legend {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-        .hold-type {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            font-size: 14px;
-        }
-        .hold-color {
-            width: 15px;
-            height: 15px;
-            border-radius: 50%;
-            border: 1px solid #555;
-        }
-         /* Adjusted badge styles */
-        .sequence-marker {
-            font-size: 14px;
-            font-weight: bold;
-            font-family: monospace;
-            pointer-events: none; /* Don't interfere with hold clicks */
-        }
-        .sequence-marker.start {
-            fill: green;
-        }
-        .sequence-marker.finish {
-            fill: red;
-        }
-        .sequence-marker.move {
-             fill: black;
-        }
-        .toast {
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            padding: 10px 20px;
-            background-color: rgba(0, 0, 0, 0.8); /* Slightly transparent black */
-            color: white;
-            border-radius: 20px; /* Rounded corners */
-            opacity: 0;
-            transition: opacity 0.4s ease-in-out, bottom 0.4s ease-in-out;
-            z-index: 1000;
-            text-align: center;
-            font-size: 14px;
-        }
-        .toast.show {
-            opacity: 1;
-            bottom: 30px; /* Move up slightly when shown */
-        }
+      body {
+        overscroll-behavior-y: contain;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <div class="container">
-        <h1>Boulder Setter App</h1>
+      <h1>Boulder Setter App</h1>
 
-        <div class="control-panel">
-            <div class="form-row">
-                <button id="btn-load-data" class="secondary">Load Holds Data</button>
-                <button id="btn-new-boulder" class="secondary">New Boulder</button>
-            </div>
+      <!-- Top Controls: Loading happens automatically now -->
+      <div class="control-panel">
+        <div class="form-row">
+          <button id="btn-new-boulder" class="secondary">New Boulder</button>
+          <button id="btn-import-boulders" class="secondary">
+            Import Boulders (.json)
+          </button>
+          <button id="btn-export-all" class="secondary" disabled>
+            Export All Boulders
+          </button>
+        </div>
+        <!-- Removed Load Holds Data button -->
+      </div>
 
-             <div id="boulder-info" style="display: none;"> <!-- Hide initially -->
-                <div class="form-group">
-                    <label for="boulder-name">Boulder Name:</label>
-                    <input type="text" id="boulder-name" placeholder="Enter boulder name">
-                </div>
+      <!-- Boulder Information Panel -->
+      <div id="boulder-info" class="control-panel" style="display: none">
+        <h2>Current Boulder Details</h2>
+        <div class="form-group">
+          <label for="boulder-name">Boulder Name:</label>
+          <input
+            type="text"
+            id="boulder-name"
+            placeholder="Enter boulder name"
+          />
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="boulder-grade">Grade:</label>
+            <select id="boulder-grade">
+              <option value="V0">V0</option>
+              <option value="V1">V1</option>
+              <option value="V2">V2</option>
+              <option value="V3">V3</option>
+              <option value="V4" selected>V4</option>
+              <option value="V5">V5</option>
+              <option value="V6">V6</option>
+              <option value="V7">V7</option>
+              <option value="V8">V8</option>
+              <option value="V9">V9</option>
+              <option value="V10">V10</option>
+              <option value="V11">V11</option>
+              <option value="V12">V12</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="boulder-style">Style:</label>
+            <select id="boulder-style">
+              <option value="Technical" selected>Technical</option>
+              <option value="Power">Power</option>
+              <option value="Dynamic">Dynamic</option>
+              <option value="Slab">Slab</option>
+              <option value="Overhang">Overhang</option>
+              <option value="Crimpy">Crimpy</option>
+              <option value="Slopey">Slopey</option>
+              <option value="Compression">Compression</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="boulder-description">Description (optional):</label>
+          <input
+            type="text"
+            id="boulder-description"
+            placeholder="Short description or beta"
+          />
+        </div>
+        <button id="btn-save-boulder" disabled>Save Boulder</button>
+      </div>
 
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="boulder-grade">Grade:</label>
-                        <select id="boulder-grade">
-                            <option value="V0">V0</option>
-                            <option value="V1">V1</option>
-                            <option value="V2">V2</option>
-                            <option value="V3">V3</option>
-                            <option value="V4">V4</option>
-                            <option value="V5">V5</option>
-                            <option value="V6">V6</option>
-                            <option value="V7">V7</option>
-                            <option value="V8">V8</option>
-                            <option value="V9">V9</option>
-                            <option value="V10">V10</option>
-                            <option value="V11">V11</option>
-                            <option value="V12">V12</option>
-                            <!-- Add more grades if needed -->
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="boulder-style">Style:</label>
-                        <select id="boulder-style">
-                            <option value="Technical">Technical</option>
-                            <option value="Power">Power</option>
-                            <option value="Dynamic">Dynamic</option>
-                            <option value="Slab">Slab</option>
-                            <option value="Overhang">Overhang</option>
-                            <option value="Crimpy">Crimpy</option>
-                            <option value="Slopey">Slopey</option>
-                            <option value="Compression">Compression</option>
-                            <option value="Other">Other</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label for="boulder-description">Description (optional):</label>
-                    <input type="text" id="boulder-description" placeholder="Short description or beta">
-                </div>
-
-                <div class="form-row">
-                    <button id="btn-save-boulder" disabled>Save Boulder</button>
-                    <button id="btn-export-all" class="secondary">Export All Boulders</button>
-                </div>
-            </div>
+      <!-- Hold Interaction Panel -->
+      <div id="hold-actions" style="display: none">
+        <!-- Legend -->
+        <div class="hold-legend">
+          <div class="hold-type">
+            <div class="hold-color" style="background-color: #4caf50b3"></div>
+            Jug
+          </div>
+          <div class="hold-type">
+            <div class="hold-color" style="background-color: #f44336b3"></div>
+            Crimp
+          </div>
+          <div class="hold-type">
+            <div class="hold-color" style="background-color: #2196f3b3"></div>
+            Sloper
+          </div>
+          <div class="hold-type">
+            <div class="hold-color" style="background-color: #ff9800b3"></div>
+            Pinch
+          </div>
+          <div class="hold-type">
+            <div class="hold-color" style="background-color: #9c27b0b3"></div>
+            Other
+          </div>
         </div>
 
-        <div id="hold-actions" style="display: none;"> <!-- Hide initially -->
-            <div class="hold-legend">
-                <div class="hold-type"><div class="hold-color" style="background-color: #4CAF5080;"></div> Jug</div>
-                <div class="hold-type"><div class="hold-color" style="background-color: #F4433680;"></div> Crimp</div>
-                <div class="hold-type"><div class="hold-color" style="background-color: #2196F380;"></div> Sloper</div>
-                <div class="hold-type"><div class="hold-color" style="background-color: #FF980080;"></div> Pinch</div>
-                <div class="hold-type"><div class="hold-color" style="background-color: #9C27B080;"></div> Other</div>
-            </div>
+        <!-- Wall Container -->
+        <div class="wall-container-outer">
+          <div class="wall-container" id="wall-container">
+            <svg id="wall-svg" preserveAspectRatio="xMidYMid meet">
+              <defs>
+                <pattern
+                  id="grid"
+                  width="50"
+                  height="50"
+                  patternUnits="userSpaceOnUse"
+                >
+                  <path
+                    d="M 50 0 L 0 0 0 50"
+                    fill="none"
+                    stroke="#FFF"
+                    strokeWidth="0.5"
+                    opacity="0.2"
+                  />
+                  <!-- Grid lighter -->
+                </pattern>
+              </defs>
 
-            <div class="wall-container" id="wall-container">
-                <svg id="wall-svg" viewBox="0 0 800 600" preserveAspectRatio="xMidYMid meet"> <!-- preserveAspectRatio added -->
-                    <!-- Background grid -->
-                    <defs>
-                        <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
-                            <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#cccccc" strokeWidth="0.5" opacity="0.7"/>
-                        </pattern>
-                    </defs>
-                    <rect width="100%" height="100%" fill="url(#grid)" />
+              <!-- Background Image Layer -->
+              <!-- Path is relative to the HTML file location (src/) -->
+              <image
+                id="wall-background-image"
+                href="../spraywall.jpg"
+                x="0"
+                y="0"
+                width="100%"
+                height="100%"
+                preserveAspectRatio="xMidYMid meet"
+              />
 
-                    <!-- Holds will be added dynamically -->
-                    <g id="holds-layer"></g>
+              <!-- Optional Grid Overlay -->
+              <rect
+                id="svg-bg-grid"
+                width="100%"
+                height="100%"
+                fill="url(#grid)"
+                opacity="0.5"
+              />
+              <!-- Grid on top with opacity -->
 
-                    <!-- Sequence numbers/markers will be added dynamically -->
-                    <g id="sequence-layer"></g>
-                </svg>
-            </div>
-
-            <div class="control-panel">
-                <div class="form-row">
-                    <button id="btn-mark-start" disabled>Mark as Start</button>
-                    <button id="btn-mark-finish" disabled>Mark as Finish</button>
-                    <button id="btn-remove-hold" class="danger" disabled>Remove Hold</button>
-                </div>
-             </div>
+              <!-- Holds Layer -->
+              <g id="holds-layer"></g>
+              <!-- Sequence Markers Layer -->
+              <g id="sequence-layer"></g>
+            </svg>
+          </div>
+          <!-- Wall Controls -->
+          <div class="wall-controls">
+            <button id="btn-reset-view" title="Reset View">🔄</button>
+          </div>
         </div>
 
-        <div class="boulder-list">
-            <h2>Saved Boulders</h2>
-            <div id="boulder-items">
-                <!-- Boulder items will be added dynamically -->
-            </div>
+        <!-- Selected Hold Info & Actions -->
+        <div class="control-panel selected-hold-panel">
+          <div id="selected-hold-info">Selected Hold: None</div>
+          <div class="form-row">
+            <button id="btn-mark-start" disabled>Mark as Start</button>
+            <button id="btn-mark-finish" disabled>Mark as Finish</button>
+            <button id="btn-remove-hold" class="danger" disabled>
+              Remove from Boulder
+            </button>
+          </div>
         </div>
+      </div>
+
+      <!-- Saved Boulders List -->
+      <div class="boulder-list">
+        <h2>Saved Boulders (<span id="boulder-count">0</span>)</h2>
+        <div id="boulder-items">
+          <p>Loading holds data...</p>
+          <!-- Initial message -->
+        </div>
+      </div>
     </div>
 
+    <!-- Toast Notifications -->
     <div id="toast" class="toast"></div>
 
-    <input type="file" id="file-input" style="display: none" accept=".json">
-
-    <script>
-        // Global state
-        const state = {
-            holdsData: null, // Holds the actual hold data (positions, types, etc.)
-            boulders: [], // Array of saved boulder objects
-            currentBoulder: null, // The boulder currently being edited/viewed
-            selectedHoldId: null, // The ID of the currently selected hold on the wall
-            isPanning: false,
-            panStart: { x: 0, y: 0 },
-            viewBox: { x: 0, y: 0, width: 800, height: 600 } // Default viewBox
-        };
-
-        // DOM elements (cached for performance)
-        const wallSvg = document.getElementById('wall-svg');
-        const holdsLayer = document.getElementById('holds-layer');
-        const sequenceLayer = document.getElementById('sequence-layer');
-        const boulderNameInput = document.getElementById('boulder-name');
-        const boulderGradeSelect = document.getElementById('boulder-grade');
-        const boulderStyleSelect = document.getElementById('boulder-style');
-        const boulderDescriptionInput = document.getElementById('boulder-description');
-        const btnLoadData = document.getElementById('btn-load-data');
-        const btnNewBoulder = document.getElementById('btn-new-boulder');
-        const btnSaveBoulder = document.getElementById('btn-save-boulder');
-        const btnExportAll = document.getElementById('btn-export-all');
-        const btnMarkStart = document.getElementById('btn-mark-start');
-        const btnMarkFinish = document.getElementById('btn-mark-finish');
-        const btnRemoveHold = document.getElementById('btn-remove-hold');
-        const boulderItems = document.getElementById('boulder-items');
-        const fileInput = document.getElementById('file-input');
-        const toast = document.getElementById('toast');
-        const boulderInfoPanel = document.getElementById('boulder-info');
-        const holdActionsPanel = document.getElementById('hold-actions');
-        const wallContainer = document.getElementById('wall-container');
-
-
-        // --- Initialization ---
-        function init() {
-            loadBoulders(); // Load saved boulders first
-            createNewBoulder(); // Start with a fresh boulder setup
-            attachEventListeners();
-            // Try to load default holds data if available locally or use sample
-            // For now, let's require explicit loading via button
-            // loadSampleData(); // Uncomment to load sample data initially
-            showToast('App initialized. Load holds data to begin.');
-            updateUI(); // Initial UI state
-        }
-
-        // --- Data Loading and Rendering ---
-
-        // Load holds data from a file object
-        function loadHoldsData(file) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const data = JSON.parse(e.target.result);
-                    if (!data.holds || !data.image_dimensions) {
-                         throw new Error('Invalid holds data format. Missing "holds" or "image_dimensions".');
-                    }
-                    state.holdsData = data;
-
-                    // Update SVG viewBox to match image dimensions
-                    const dims = state.holdsData.image_dimensions;
-                    state.viewBox = { x: 0, y: 0, width: dims.width, height: dims.height };
-                    wallSvg.setAttribute('viewBox', `0 0 ${dims.width} ${dims.height}`);
-
-                    // Reset current boulder as holds have changed
-                    createNewBoulder();
-                    renderHolds();
-                    showToast('Holds data loaded successfully');
-                    boulderInfoPanel.style.display = 'block'; // Show controls
-                    holdActionsPanel.style.display = 'block';
-                    updateUI();
-
-                } catch (error) {
-                    console.error("Error parsing JSON:", error);
-                    showToast(`Error loading holds data: ${error.message}`);
-                    state.holdsData = null; // Reset if loading failed
-                    renderHolds(); // Clear the wall
-                    updateUI();
-                }
-            };
-            reader.onerror = function() {
-                 showToast(`Error reading file: ${reader.error}`);
-                 state.holdsData = null;
-                 renderHolds();
-                 updateUI();
-            };
-            reader.readAsText(file);
-        }
-
-        // Render all holds on the SVG wall
-        function renderHolds() {
-            holdsLayer.innerHTML = ''; // Clear previous holds
-            sequenceLayer.innerHTML = ''; // Clear previous sequence markers
-
-            if (!state.holdsData || !state.holdsData.holds) {
-                // Optionally display a message on the SVG
-                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-                text.setAttribute('x', state.viewBox.width / 2);
-                text.setAttribute('y', state.viewBox.height / 2);
-                text.setAttribute('text-anchor', 'middle');
-                text.textContent = 'Load holds data (.json)';
-                holdsLayer.appendChild(text);
-                return;
-            }
-
-            state.holdsData.holds.forEach(hold => {
-                const holdGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-                holdGroup.setAttribute('id', `hold-${hold.id}`);
-                holdGroup.setAttribute('class', 'hold'); // Add 'hold' class
-                holdGroup.setAttribute('data-id', hold.id);
-
-                const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-                const points = hold.segmentation.map(point => point.join(',')).join(' ');
-                polygon.setAttribute('points', points);
-                polygon.setAttribute('fill', getHoldColor(hold.hold_type));
-                polygon.setAttribute('stroke', '#333'); // Darker stroke
-                polygon.setAttribute('stroke-width', '1'); // Adjust stroke width as needed relative to viewBox
-
-                holdGroup.appendChild(polygon);
-
-                 // Optionally render direction vector (can be cluttered)
-                 /*
-                if (hold.direction_vector && hold.direction_vector.length === 2) {
-                    // ... (Arrow rendering code from your snippet - might need scaling adjustments)
-                }
-                 */
-
-                holdGroup.addEventListener('click', (e) => {
-                    e.stopPropagation(); // Prevent triggering SVG pan/zoom
-                    handleHoldClick(hold.id);
-                });
-
-                holdsLayer.appendChild(holdGroup);
-            });
-
-            // After rendering holds, render the sequence for the current boulder
-            renderSequence();
-            updateHoldAppearance(); // Dim holds not in the current boulder
-        }
-
-        // Get color based on hold type
-        function getHoldColor(type) {
-            // Use semi-transparent colors for better visibility of overlaps/grid
-            switch(type?.toLowerCase()) { // Added optional chaining for safety
-                case 'jug': return '#4CAF50B3'; // Green with transparency
-                case 'crimp': return '#F44336B3'; // Red
-                case 'sloper': return '#2196F3B3'; // Blue
-                case 'pinch': return '#FF9800B3'; // Orange
-                default: return '#9C27B0B3'; // Purple (Other)
-            }
-        }
-
-        // --- Boulder Management ---
-
-        // Load boulders from localStorage
-        function loadBoulders() {
-            try {
-                const savedBoulders = localStorage.getItem('boulderApp_boulders'); // Use a specific key
-                if (savedBoulders) {
-                    state.boulders = JSON.parse(savedBoulders);
-                } else {
-                    state.boulders = []; // Initialize if nothing is saved
-                }
-            } catch (error) {
-                console.error('Error loading boulders from localStorage:', error);
-                state.boulders = []; // Reset on error
-                showToast('Could not load saved boulders.');
-            }
-            renderBoulderList(); // Update the list display
-        }
-
-        // Save boulders to localStorage
-        function saveBoulders() {
-            try {
-                localStorage.setItem('boulderApp_boulders', JSON.stringify(state.boulders));
-            } catch (error) {
-                console.error('Error saving boulders to localStorage:', error);
-                showToast('Error saving boulders: Storage might be full.');
-            }
-        }
-
-        // Create a new, empty boulder object
-        function createNewBoulder() {
-            // Deselect any currently selected hold first
-            if (state.selectedHoldId) {
-                deselectHold();
-            }
-
-            state.currentBoulder = {
-                id: `boulder-${Date.now()}-${Math.random().toString(16).substring(2, 8)}`, // More unique ID
-                name: '',
-                grade: 'V4', // Default grade
-                style: 'Technical', // Default style
-                description: '',
-                moves: [], // Array of objects: { hold_id: string, move_number: int }
-                start_holds: [], // Array of hold_ids
-                finish_holds: [] // Array of hold_ids
-            };
-
-            // Clear input fields
-            boulderNameInput.value = '';
-            boulderGradeSelect.value = state.currentBoulder.grade;
-            boulderStyleSelect.value = state.currentBoulder.style;
-            boulderDescriptionInput.value = '';
-
-            renderSequence(); // Clear sequence markers from wall
-            updateUI(); // Update button states etc.
-            renderBoulderList(); // Highlight no boulder as active
-            updateHoldAppearance(); // Update dimming based on the empty boulder
-            console.log("Created new boulder:", state.currentBoulder.id);
-        }
-
-        // Save the currently edited boulder
-        function saveCurrentBoulder() {
-            if (!state.currentBoulder || !state.holdsData) {
-                 showToast('Cannot save: No boulder active or holds data missing.');
-                 return;
-            }
-
-            // Update boulder data from inputs
-            state.currentBoulder.name = boulderNameInput.value.trim() || `Unnamed Boulder ${state.currentBoulder.id.slice(-4)}`;
-            state.currentBoulder.grade = boulderGradeSelect.value;
-            state.currentBoulder.style = boulderStyleSelect.value;
-            state.currentBoulder.description = boulderDescriptionInput.value.trim();
-
-            // Validation
-            if (state.currentBoulder.moves.length === 0) {
-                showToast('Cannot save: Add at least one hold to the boulder.');
-                return;
-            }
-            if (state.currentBoulder.start_holds.length === 0) {
-                showToast('Cannot save: Mark at least one Start hold.');
-                return;
-            }
-            if (state.currentBoulder.finish_holds.length === 0) {
-                showToast('Cannot save: Mark at least one Finish hold.');
-                return;
-            }
-
-            // Add or update boulder in the main list
-            const existingIndex = state.boulders.findIndex(b => b.id === state.currentBoulder.id);
-            // Create a clean copy to avoid potential circular references if state holds complex objects
-            const boulderToSave = JSON.parse(JSON.stringify(state.currentBoulder));
-
-            if (existingIndex >= 0) {
-                state.boulders[existingIndex] = boulderToSave;
-                showToast(`Boulder "${boulderToSave.name}" updated.`);
-            } else {
-                state.boulders.push(boulderToSave);
-                showToast(`Boulder "${boulderToSave.name}" saved.`);
-            }
-
-            saveBoulders(); // Persist to localStorage
-            renderBoulderList(); // Update the list display
-            updateUI(); // Update button states etc.
-        }
-
-        // Load a specific boulder for editing
-        function loadBoulder(boulderId) {
-            const boulderToLoad = state.boulders.find(b => b.id === boulderId);
-            if (!boulderToLoad || !state.holdsData) {
-                showToast("Cannot load boulder or holds data missing.");
-                return;
-            }
-
-             // Deselect any currently selected hold first
-            if (state.selectedHoldId) {
-                deselectHold();
-            }
-
-            // Create a deep copy to edit without modifying the saved version until "Save" is hit
-            state.currentBoulder = JSON.parse(JSON.stringify(boulderToLoad));
-
-            // Update input fields
-            boulderNameInput.value = state.currentBoulder.name;
-            boulderGradeSelect.value = state.currentBoulder.grade;
-            boulderStyleSelect.value = state.currentBoulder.style;
-            boulderDescriptionInput.value = state.currentBoulder.description || '';
-
-            renderSequence(); // Render markers for the loaded boulder
-            updateUI(); // Update button states
-            renderBoulderList(); // Highlight the loaded boulder in the list
-            updateHoldAppearance(); // Dim holds not in the loaded boulder
-
-            showToast(`Loaded boulder: ${state.currentBoulder.name}`);
-        }
-
-        // Delete a boulder
-        function deleteBoulder(boulderId) {
-            const boulderIndex = state.boulders.findIndex(b => b.id === boulderId);
-            if (boulderIndex === -1) return; // Boulder not found
-
-            const boulderName = state.boulders[boulderIndex].name;
-
-            // Use confirm for simple confirmation
-            if (confirm(`Are you sure you want to delete boulder "${boulderName}"? This cannot be undone.`)) {
-                state.boulders.splice(boulderIndex, 1); // Remove from array
-
-                // If the deleted boulder was the current one, create a new one
-                if (state.currentBoulder && state.currentBoulder.id === boulderId) {
-                    createNewBoulder();
-                }
-
-                saveBoulders(); // Save changes to localStorage
-                renderBoulderList(); // Update the list
-                showToast(`Boulder "${boulderName}" deleted.`);
-                updateUI();
-            }
-        }
-
-        // Export all boulders as JSON
-        function exportAllBoulders() {
-            if (!state.holdsData) {
-                 showToast('Load holds data before exporting.');
-                 return;
-            }
-            if (state.boulders.length === 0) {
-                showToast('No boulders saved to export.');
-                return;
-            }
-
-            // Format data for GNN training
-            const exportData = {
-                wall_info: {
-                    // Include image dimensions and potentially other wall metadata
-                    dimensions: state.holdsData.image_dimensions,
-                    // Add other wall info if needed, e.g., angle
-                },
-                // Include the raw holds data used for these boulders
-                holds_library: state.holdsData.holds,
-                // List of boulders
-                boulders: state.boulders.map(boulder => {
-                    // Optionally enrich move data right before export if needed,
-                    // but the current structure with just IDs is often preferred for GNNs
-                    // where holds are nodes identified by ID.
-                     // Keep the structure clean: id, name, grade, etc. + hold IDs
-                    return {
-                        id: boulder.id,
-                        name: boulder.name,
-                        grade: boulder.grade,
-                        style: boulder.style,
-                        description: boulder.description,
-                        // Keep the raw arrays of IDs
-                        start_holds: boulder.start_holds,
-                        finish_holds: boulder.finish_holds,
-                        // Moves could be just the sequence of hold IDs
-                        // or include move numbers if useful for your GNN
-                        ordered_holds: boulder.moves.sort((a, b) => a.move_number - b.move_number).map(m => m.hold_id),
-                        // Include the move number mapping if needed
-                        // moves_detailed: boulder.moves,
-                    };
-                })
-            };
-
-            try {
-                const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `boulder_export_${new Date().toISOString().split('T')[0]}.json`; // Add date to filename
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-                showToast('All boulders exported successfully.');
-            } catch (error) {
-                console.error("Export failed:", error);
-                showToast('Failed to export boulders.');
-            }
-        }
-
-
-        // --- Hold Interaction ---
-
-        // Handle clicking on a hold SVG element
-        function handleHoldClick(holdId) {
-             if (!state.currentBoulder || !state.holdsData) return; // Need an active boulder and data
-
-            const isAlreadyInBoulder = state.currentBoulder.moves.some(m => m.hold_id === holdId);
-
-            if (state.selectedHoldId === holdId) {
-                 // Clicked the already selected hold - deselect it
-                 deselectHold();
-            } else {
-                 // Select the new hold
-                 selectHold(holdId);
-
-                 // If the hold is NOT already part of the boulder, add it
-                 if (!isAlreadyInBoulder) {
-                    addHoldToBoulder(holdId);
-                 }
-            }
-             updateUI(); // Update button states based on selection/deselection
-        }
-
-        // Select a hold (visually and in state)
-        function selectHold(holdId) {
-            // Deselect previous if any
-            deselectHold();
-
-            state.selectedHoldId = holdId;
-            const holdElement = document.getElementById(`hold-${holdId}`);
-            if (holdElement) {
-                holdElement.classList.add('selected');
-            }
-            updateUI(); // Enable action buttons
-        }
-
-        // Deselect the currently selected hold
-        function deselectHold() {
-            if (state.selectedHoldId) {
-                const holdElement = document.getElementById(`hold-${state.selectedHoldId}`);
-                if (holdElement) {
-                    holdElement.classList.remove('selected');
-                }
-            }
-            state.selectedHoldId = null;
-            updateUI(); // Disable action buttons
-        }
-
-        // Add a hold to the current boulder's sequence
-        function addHoldToBoulder(holdId) {
-             if (!state.currentBoulder || state.currentBoulder.moves.some(m => m.hold_id === holdId)) {
-                 // Don't add if already present (selection handles this now)
-                 return;
-             }
-
-            // Find the next available move number
-            const nextMoveNumber = (state.currentBoulder.moves.length > 0)
-                ? Math.max(...state.currentBoulder.moves.map(m => m.move_number)) + 1
-                : 1;
-
-            state.currentBoulder.moves.push({ hold_id: holdId, move_number: nextMoveNumber });
-            console.log(`Added hold ${holdId} as move ${nextMoveNumber}`);
-
-            renderSequence(); // Update sequence display
-            updateHoldAppearance(); // Ensure it's not dimmed
-            updateUI(); // Enable save button potentially
-        }
-
-
-        // Mark selected hold as Start
-        function markSelectedAsStart() {
-            if (!state.selectedHoldId || !state.currentBoulder) return;
-
-            const holdId = state.selectedHoldId;
-             // Ensure it's part of the boulder first (should be if selectable via current logic)
-             if (!state.currentBoulder.moves.some(m => m.hold_id === holdId)) {
-                addHoldToBoulder(holdId); // Add if somehow wasn't added
-             }
-
-            // Add to start_holds if not already there
-            if (!state.currentBoulder.start_holds.includes(holdId)) {
-                state.currentBoulder.start_holds.push(holdId);
-            }
-            // Remove from finish_holds if it was marked as finish
-            state.currentBoulder.finish_holds = state.currentBoulder.finish_holds.filter(id => id !== holdId);
-
-            renderSequence(); // Update markers
-            showToast(`Hold ${holdId} marked as Start`);
-            updateUI();
-        }
-
-        // Mark selected hold as Finish
-        function markSelectedAsFinish() {
-            if (!state.selectedHoldId || !state.currentBoulder) return;
-
-            const holdId = state.selectedHoldId;
-             // Ensure it's part of the boulder first
-             if (!state.currentBoulder.moves.some(m => m.hold_id === holdId)) {
-                addHoldToBoulder(holdId);
-             }
-
-            // Add to finish_holds if not already there
-            if (!state.currentBoulder.finish_holds.includes(holdId)) {
-                state.currentBoulder.finish_holds.push(holdId);
-            }
-            // Remove from start_holds if it was marked as start
-            state.currentBoulder.start_holds = state.currentBoulder.start_holds.filter(id => id !== holdId);
-
-            renderSequence(); // Update markers
-            showToast(`Hold ${holdId} marked as Finish`);
-            updateUI();
-        }
-
-        // Remove selected hold from the current boulder
-        function removeSelectedHold() {
-            if (!state.selectedHoldId || !state.currentBoulder) return;
-
-            const holdIdToRemove = state.selectedHoldId;
-
-            // Remove from moves array
-            state.currentBoulder.moves = state.currentBoulder.moves.filter(move => move.hold_id !== holdIdToRemove);
-
-            // Remove from start/finish lists
-            state.currentBoulder.start_holds = state.currentBoulder.start_holds.filter(id => id !== holdIdToRemove);
-            state.currentBoulder.finish_holds = state.currentBoulder.finish_holds.filter(id => id !== holdIdToRemove);
-
-             // Important: Renumber the remaining moves
-            renumberMoves();
-
-             // Deselect the hold as it's removed
-            const holdElement = document.getElementById(`hold-${holdIdToRemove}`);
-            if (holdElement) {
-                 holdElement.classList.remove('selected');
-            }
-            state.selectedHoldId = null; // Clear selection state
-
-
-            renderSequence(); // Redraw sequence numbers/markers
-            updateHoldAppearance(); // Update dimming
-            showToast(`Hold ${holdIdToRemove} removed from boulder`);
-            updateUI(); // Update button states
-        }
-
-        // Renumber moves sequentially after a removal
-        function renumberMoves() {
-            if (!state.currentBoulder) return;
-             // Sort moves by their current number to maintain relative order
-             state.currentBoulder.moves.sort((a, b) => a.move_number - b.move_number);
-             // Reassign sequential numbers
-            state.currentBoulder.moves.forEach((move, index) => {
-                move.move_number = index + 1;
-            });
-             console.log("Renumbered moves:", state.currentBoulder.moves);
-        }
-
-
-        // --- UI Updates and Rendering ---
-
-        // Render sequence numbers and start/finish markers
-        function renderSequence() {
-            sequenceLayer.innerHTML = ''; // Clear previous markers
-
-            if (!state.currentBoulder || !state.holdsData) return;
-
-            state.currentBoulder.moves.forEach(move => {
-                const hold = state.holdsData.holds.find(h => h.id === move.hold_id);
-                if (!hold) return; // Skip if hold data not found
-
-                // Calculate center or a suitable position for the marker
-                const bbox = hold.bounding_box;
-                // Position slightly above the bounding box center for visibility
-                const centerX = bbox.x + bbox.width / 2;
-                const centerY = bbox.y + bbox.height / 2 - (bbox.height * 0.3); // Adjust vertical offset
-
-                let markerText = '';
-                let markerClass = 'sequence-marker';
-
-                const isStart = state.currentBoulder.start_holds.includes(move.hold_id);
-                const isFinish = state.currentBoulder.finish_holds.includes(move.hold_id);
-
-                if (isStart && isFinish) {
-                    markerText = 'S/F';
-                    markerClass += ' start finish'; // Apply both styles? Or prioritize one? Let's use S/F
-                } else if (isStart) {
-                    markerText = 'S';
-                    markerClass += ' start';
-                } else if (isFinish) {
-                    markerText = 'F';
-                    markerClass += ' finish';
-                } else {
-                    // Only show move number if not Start or Finish
-                    markerText = move.move_number.toString();
-                     markerClass += ' move';
-                }
-
-                const textElement = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-                textElement.setAttribute('x', centerX);
-                textElement.setAttribute('y', centerY);
-                textElement.setAttribute('text-anchor', 'middle');
-                textElement.setAttribute('dominant-baseline', 'middle');
-                textElement.setAttribute('class', markerClass);
-                // Scale font size based on hold size? Or keep fixed? Fixed might be easier.
-                // textElement.setAttribute('font-size', Math.max(10, Math.min(bbox.width, bbox.height) * 0.4) + 'px');
-                textElement.textContent = markerText;
-
-                sequenceLayer.appendChild(textElement);
-            });
-        }
-
-        // Update the visual appearance of holds (dimming those not in the current boulder)
-        function updateHoldAppearance() {
-            if (!state.holdsData || !state.currentBoulder) return;
-
-            const holdsInCurrentBoulder = new Set(state.currentBoulder.moves.map(m => m.hold_id));
-            const allHoldElements = holdsLayer.querySelectorAll('.hold');
-
-            allHoldElements.forEach(holdElement => {
-                 const holdId = holdElement.getAttribute('data-id');
-                if (holdsInCurrentBoulder.has(holdId)) {
-                    holdElement.classList.remove('not-in-boulder');
-                     holdElement.classList.add('in-boulder');
-                } else {
-                     holdElement.classList.remove('in-boulder');
-                    holdElement.classList.add('not-in-boulder');
-                }
-            });
-        }
-
-
-        // Render the list of saved boulders
-        function renderBoulderList() {
-            boulderItems.innerHTML = ''; // Clear list
-
-            if (state.boulders.length === 0) {
-                boulderItems.innerHTML = '<li>No boulders saved yet.</li>';
-                return;
-            }
-
-            state.boulders.forEach(boulder => {
-                const item = document.createElement('div');
-                item.className = 'boulder-item';
-                if (state.currentBoulder && boulder.id === state.currentBoulder.id) {
-                    item.classList.add('boulder-item-active');
-                }
-                item.setAttribute('data-boulder-id', boulder.id); // Add data attribute
-
-                const info = document.createElement('div');
-                info.innerHTML = `
-                    <strong>${boulder.name || 'Unnamed Boulder'}</strong> (${boulder.grade})<br>
-                    <small>${boulder.style} - ${boulder.moves.length} holds</small>
-                `;
-
-                const actions = document.createElement('div');
-
-                const loadBtn = document.createElement('button');
-                loadBtn.textContent = 'Load';
-                loadBtn.className = 'secondary';
-                loadBtn.onclick = (e) => { // Use onclick for simplicity here
-                     e.stopPropagation(); // Prevent potential parent clicks
-                     if (!state.holdsData) {
-                          showToast('Load holds data first!');
-                          return;
-                     }
-                     loadBoulder(boulder.id);
-                };
-
-                const deleteBtn = document.createElement('button');
-                deleteBtn.textContent = 'Delete';
-                deleteBtn.className = 'danger';
-                deleteBtn.onclick = (e) => {
-                    e.stopPropagation();
-                    deleteBoulder(boulder.id);
-                };
-
-                actions.appendChild(loadBtn);
-                actions.appendChild(deleteBtn);
-
-                item.appendChild(info);
-                item.appendChild(actions);
-
-                // Make the whole item clickable to load the boulder
-                item.onclick = () => {
-                     if (!state.holdsData) {
-                          showToast('Load holds data first!');
-                          return;
-                     }
-                     loadBoulder(boulder.id);
-                 };
-
-                boulderItems.appendChild(item);
-            });
-        }
-
-        // Update UI element states (enabled/disabled buttons, etc.)
-        function updateUI() {
-            const hasHoldsData = !!state.holdsData;
-            const hasCurrentBoulder = !!state.currentBoulder;
-            const hasSelectedHold = !!state.selectedHoldId;
-            const boulderIsSavable = hasCurrentBoulder &&
-                                     state.currentBoulder.moves.length > 0 &&
-                                     state.currentBoulder.start_holds.length > 0 &&
-                                     state.currentBoulder.finish_holds.length > 0;
-
-             // Show/hide panels based on data loaded
-             boulderInfoPanel.style.display = hasHoldsData ? 'block' : 'none';
-             holdActionsPanel.style.display = hasHoldsData ? 'block' : 'none';
-
-            // Enable/disable buttons
-            btnSaveBoulder.disabled = !boulderIsSavable;
-            btnExportAll.disabled = state.boulders.length === 0;
-            btnMarkStart.disabled = !hasSelectedHold;
-            btnMarkFinish.disabled = !hasSelectedHold;
-            btnRemoveHold.disabled = !hasSelectedHold;
-
-            // Highlight active boulder in the list
-            const listItems = boulderItems.querySelectorAll('.boulder-item');
-            listItems.forEach(item => {
-                if (state.currentBoulder && item.getAttribute('data-boulder-id') === state.currentBoulder.id) {
-                    item.classList.add('boulder-item-active');
-                } else {
-                    item.classList.remove('boulder-item-active');
-                }
-            });
-        }
-
-        // Show toast notification
-        let toastTimeout;
-        function showToast(message, duration = 3000) {
-            toast.textContent = message;
-            toast.classList.add('show');
-
-            // Clear previous timeout if any
-            if (toastTimeout) {
-                clearTimeout(toastTimeout);
-            }
-
-            // Hide after duration
-            toastTimeout = setTimeout(() => {
-                toast.classList.remove('show');
-            }, duration);
-        }
-
-
-        // --- SVG Panning Logic ---
-        function enablePanning() {
-            let isDragging = false;
-            let startPoint = { x: 0, y: 0 };
-            let currentViewBox = { ...state.viewBox }; // Copy initial viewBox
-
-            const getEventPoint = (event) => {
-                // Handles both mouse and touch events
-                if (event.touches && event.touches.length > 0) {
-                    return { x: event.touches[0].clientX, y: event.touches[0].clientY };
-                }
-                return { x: event.clientX, y: event.clientY };
-            };
-
-            const svgPoint = (screenX, screenY) => {
-                 // Convert screen coordinates to SVG coordinates
-                 const pt = wallSvg.createSVGPoint();
-                 pt.x = screenX;
-                 pt.y = screenY;
-                 const svgCoord = pt.matrixTransform(wallSvg.getScreenCTM().inverse());
-                 return { x: svgCoord.x, y: svgCoord.y };
-            };
-
-            const panStart = (event) => {
-                 // Prevent default only if not clicking a hold directly
-                 if (event.target === wallSvg || event.target.tagName === 'rect' || event.target.tagName === 'pattern') {
-                     event.preventDefault();
-                     isDragging = true;
-                     startPoint = getEventPoint(event);
-                     currentViewBox = { ...state.viewBox }; // Capture current viewBox at drag start
-                     wallSvg.style.cursor = 'grabbing';
-                     // Add a class for visual feedback if needed
-                     wallSvg.classList.add('grabbing');
-                 } else {
-                     isDragging = false; // Don't pan if clicking on a hold polygon etc.
-                 }
-            };
-
-            const panMove = (event) => {
-                if (!isDragging) return;
-                event.preventDefault();
-
-                const currentPoint = getEventPoint(event);
-                const dx = currentPoint.x - startPoint.x;
-                const dy = currentPoint.y - startPoint.y;
-
-                // Calculate the scaling factor based on SVG size and viewBox size
-                const clientRect = wallSvg.getBoundingClientRect();
-                const scaleX = currentViewBox.width / clientRect.width;
-                const scaleY = currentViewBox.height / clientRect.height;
-
-                 // Adjust viewBox position based on drag delta and scaling
-                state.viewBox.x = currentViewBox.x - dx * scaleX;
-                state.viewBox.y = currentViewBox.y - dy * scaleY;
-
-                // Clamp viewBox position to prevent panning outside reasonable bounds (optional)
-                // Example: Keep at least some part of the original view visible
-                // state.viewBox.x = Math.max(-state.viewBox.width * 0.5, Math.min(state.viewBox.width * 0.5, state.viewBox.x));
-                // state.viewBox.y = Math.max(-state.viewBox.height * 0.5, Math.min(state.viewBox.height * 0.5, state.viewBox.y));
-
-
-                wallSvg.setAttribute('viewBox', `${state.viewBox.x} ${state.viewBox.y} ${state.viewBox.width} ${state.viewBox.height}`);
-            };
-
-            const panEnd = (event) => {
-                if (!isDragging) return;
-                event.preventDefault();
-                isDragging = false;
-                wallSvg.style.cursor = 'grab';
-                 wallSvg.classList.remove('grabbing');
-            };
-
-            // Mouse events
-            wallSvg.addEventListener('mousedown', panStart);
-            wallSvg.addEventListener('mousemove', panMove);
-            wallSvg.addEventListener('mouseup', panEnd);
-            wallSvg.addEventListener('mouseleave', panEnd); // Stop panning if mouse leaves SVG
-
-            // Touch events
-            wallSvg.addEventListener('touchstart', panStart, { passive: false }); // Need passive: false to preventDefault
-            wallSvg.addEventListener('touchmove', panMove, { passive: false });
-            wallSvg.addEventListener('touchend', panEnd);
-            wallSvg.addEventListener('touchcancel', panEnd);
-        }
-
-
-        // --- Event Listeners ---
-        function attachEventListeners() {
-            btnLoadData.addEventListener('click', () => fileInput.click());
-            fileInput.addEventListener('change', (event) => {
-                const file = event.target.files[0];
-                if (file) {
-                    loadHoldsData(file);
-                }
-                 // Reset file input value to allow loading the same file again if needed
-                 event.target.value = null;
-            });
-
-            btnNewBoulder.addEventListener('click', createNewBoulder);
-            btnSaveBoulder.addEventListener('click', saveCurrentBoulder);
-            btnExportAll.addEventListener('click', exportAllBoulders);
-
-            btnMarkStart.addEventListener('click', markSelectedAsStart);
-            btnMarkFinish.addEventListener('click', markSelectedAsFinish);
-            btnRemoveHold.addEventListener('click', removeSelectedHold);
-
-             // Add panning listeners
-             enablePanning();
-
-             // Deselect hold if clicking outside holds (on the SVG background)
-             wallSvg.addEventListener('click', (event) => {
-                 if (event.target === wallSvg || event.target.tagName === 'rect') {
-                     deselectHold();
-                 }
-             });
-        }
-
-        // --- Start the App ---
-        document.addEventListener('DOMContentLoaded', init);
-
-    </script>
-</body>
+    <!-- Hidden File Input for Importing Boulders -->
+    <input
+      type="file"
+      id="import-file-input"
+      style="display: none"
+      accept=".json"
+    />
+
+    <!-- Libraries (Panzoom) -->
+    <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
+    <!-- App Script (relative to this HTML file) -->
+    <script src="script.js" defer></script>
+  </body>
 </html>
