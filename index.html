@@ -6,48 +6,183 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover"
     />
-    <title>Boulder Setter App</title>
-    <!-- Path to CSS is relative to this HTML file -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
+    <title>Boulder Setter</title>
     <link rel="stylesheet" href="src/style.css" />
-    <style>
-      body {
-        overscroll-behavior-y: contain;
-      }
-    </style>
   </head>
   <body>
-    <div class="container">
-      <h1>Boulder Setter App</h1>
+    <!-- Home Page -->
+    <div class="page active" id="home-page">
+      <nav class="navbar">
+        <div class="navbar-button" style="width: 60px"></div>
+        <div class="navbar-title">Boulder Setter</div>
+        <button class="navbar-button" onclick="app.showPage('hold-selection')">
+          New
+        </button>
+      </nav>
 
-      <!-- Top Controls: Loading happens automatically now -->
-      <div class="control-panel">
-        <div class="form-row">
-          <button id="btn-new-boulder" class="secondary">New Boulder</button>
-          <button id="btn-import-boulders" class="secondary">
-            Import Boulders (.json)
+      <div class="content">
+        <!-- Stats -->
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-number" id="total-boulders">0</div>
+            <div class="stat-label">Total Boulders</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-number" id="recent-count">0</div>
+            <div class="stat-label">This Week</div>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <button class="primary-button" onclick="app.showPage('hold-selection')">
+          Set New Boulder
+        </button>
+
+        <div class="button-row">
+          <button class="secondary-button" onclick="app.importBoulders()">
+            Import
           </button>
-          <button id="btn-export-all" class="secondary" disabled>
-            Export All Boulders
+          <button
+            class="secondary-button"
+            onclick="app.exportAllBoulders()"
+            id="export-button"
+          >
+            Export
           </button>
         </div>
-        <!-- Removed Load Holds Data button -->
+
+        <!-- Boulder List -->
+        <div class="boulder-list-header">Recent Boulders</div>
+        <div id="boulder-list">
+          <div class="loading">
+            <div class="loading-spinner"></div>
+            <div>Loading holds data...</div>
+          </div>
+        </div>
       </div>
+    </div>
 
-      <!-- Boulder Information Panel -->
-      <div id="boulder-info" class="control-panel" style="display: none">
-        <h2>Current Boulder Details</h2>
-        <div class="form-group">
-          <label for="boulder-name">Boulder Name:</label>
-          <input
-            type="text"
-            id="boulder-name"
-            placeholder="Enter boulder name"
-          />
+    <!-- Hold Selection Page -->
+    <div class="page" id="hold-selection-page">
+      <div class="wall-wrapper">
+        <nav
+          class="navbar"
+          style="
+            position: absolute;
+            background: rgba(0, 0, 0, 0.5);
+            border-bottom: none;
+          "
+        >
+          <button
+            class="navbar-button"
+            style="color: white"
+            onclick="app.cancelBoulderCreation()"
+          >
+            Cancel
+          </button>
+          <div class="navbar-title" style="color: white">Select Holds</div>
+          <button
+            class="navbar-button disabled"
+            style="color: white"
+            id="next-button"
+            onclick="app.proceedToDetails()"
+          >
+            Next
+          </button>
+        </nav>
+
+        <div class="wall-container" id="wall-container">
+          <svg id="wall-svg" preserveAspectRatio="xMidYMid meet">
+            <defs>
+              <pattern
+                id="grid"
+                width="50"
+                height="50"
+                patternUnits="userSpaceOnUse"
+              >
+                <path
+                  d="M 50 0 L 0 0 0 50"
+                  fill="none"
+                  stroke="#FFF"
+                  stroke-width="0.5"
+                  opacity="0.2"
+                />
+              </pattern>
+            </defs>
+            <image
+              id="wall-background-image"
+              href="./spraywall.jpg"
+              x="0"
+              y="0"
+              width="100%"
+              height="100%"
+              preserveAspectRatio="xMidYMid meet"
+            />
+            <rect
+              id="svg-bg-grid"
+              width="100%"
+              height="100%"
+              fill="url(#grid)"
+              opacity="0.3"
+            />
+            <g id="click-targets-layer"></g>
+            <g id="visible-holds-layer"></g>
+            <g id="sequence-layer"></g>
+          </svg>
         </div>
-        <div class="form-row">
+
+        <div class="hold-info-bar">
+          <div class="hold-counter">
+            <div class="counter-item normal">
+              <div class="counter-number" id="normal-count">0</div>
+              <div class="counter-label">Holds</div>
+            </div>
+            <div class="counter-item start">
+              <div class="counter-number" id="start-count">0</div>
+              <div class="counter-label">Start</div>
+            </div>
+            <div class="counter-item finish">
+              <div class="counter-number" id="finish-count">0</div>
+              <div class="counter-label">Finish</div>
+            </div>
+          </div>
+          <div style="text-align: center; color: #86868b; font-size: 13px">
+            Tap once for hold • Twice for start • Three times for finish
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Boulder Details Page -->
+    <div class="page" id="boulder-details-page">
+      <nav class="navbar">
+        <button class="navbar-button" onclick="app.showPage('hold-selection')">
+          Back
+        </button>
+        <div class="navbar-title">Boulder Details</div>
+        <button class="navbar-button" onclick="app.saveBoulder()">Save</button>
+      </nav>
+
+      <div class="content">
+        <div class="card">
           <div class="form-group">
-            <label for="boulder-grade">Grade:</label>
-            <select id="boulder-grade">
+            <label class="form-label" for="boulder-name">Name</label>
+            <input
+              type="text"
+              class="form-input"
+              id="boulder-name"
+              placeholder="Enter boulder name"
+            />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="boulder-grade">Grade</label>
+            <select class="form-select" id="boulder-grade">
               <option value="V0">V0</option>
               <option value="V1">V1</option>
               <option value="V2">V2</option>
@@ -63,9 +198,10 @@
               <option value="V12">V12</option>
             </select>
           </div>
+
           <div class="form-group">
-            <label for="boulder-style">Style:</label>
-            <select id="boulder-style">
+            <label class="form-label" for="boulder-style">Style</label>
+            <select class="form-select" id="boulder-style">
               <option value="Technical" selected>Technical</option>
               <option value="Power">Power</option>
               <option value="Dynamic">Dynamic</option>
@@ -77,138 +213,35 @@
               <option value="Other">Other</option>
             </select>
           </div>
-        </div>
-        <div class="form-group">
-          <label for="boulder-description">Description (optional):</label>
-          <input
-            type="text"
-            id="boulder-description"
-            placeholder="Short description or beta"
-          />
-        </div>
-        <button id="btn-save-boulder" disabled>Save Boulder</button>
-      </div>
 
-      <!-- Hold Interaction Panel -->
-      <div id="hold-actions" style="display: none">
-        <!-- Legend -->
-        <div class="hold-legend">
-          <div class="hold-type">
-            <div class="hold-color" style="background-color: #4caf50b3"></div>
-            Jug
-          </div>
-          <div class="hold-type">
-            <div class="hold-color" style="background-color: #f44336b3"></div>
-            Crimp
-          </div>
-          <div class="hold-type">
-            <div class="hold-color" style="background-color: #2196f3b3"></div>
-            Sloper
-          </div>
-          <div class="hold-type">
-            <div class="hold-color" style="background-color: #ff9800b3"></div>
-            Pinch
-          </div>
-          <div class="hold-type">
-            <div class="hold-color" style="background-color: #9c27b0b3"></div>
-            Other
+          <div class="form-group">
+            <label class="form-label" for="boulder-description"
+              >Description (Optional)</label
+            >
+            <textarea
+              class="form-textarea"
+              id="boulder-description"
+              placeholder="Add notes or beta..."
+            ></textarea>
           </div>
         </div>
 
-        <!-- Wall Container -->
-        <div class="wall-container-outer">
-          <div class="wall-container" id="wall-container">
-            <svg id="wall-svg" preserveAspectRatio="xMidYMid meet">
-              <defs>
-                <pattern
-                  id="grid"
-                  width="50"
-                  height="50"
-                  patternUnits="userSpaceOnUse"
-                >
-                  <path
-                    d="M 50 0 L 0 0 0 50"
-                    fill="none"
-                    stroke="#FFF"
-                    strokeWidth="0.5"
-                    opacity="0.2"
-                  />
-                </pattern>
-              </defs>
-
-              <!-- Background Image Layer -->
-              <image
-                id="wall-background-image"
-                href="../spraywall.jpg"
-                x="0"
-                y="0"
-                width="100%"
-                height="100%"
-                preserveAspectRatio="xMidYMid meet"
-              />
-
-              <!-- Optional Grid Overlay -->
-              <rect
-                id="svg-bg-grid"
-                width="100%"
-                height="100%"
-                fill="url(#grid)"
-                opacity="0.5"
-              />
-
-              <!-- Layer for INVISIBLE Click Targets -->
-              <g id="click-targets-layer"></g>
-
-              <!-- Layer for VISIBLE Hold Polygons -->
-              <g id="visible-holds-layer"></g>
-
-              <!-- Sequence Markers Layer (On top of visible holds) -->
-              <g id="sequence-layer"></g>
-            </svg>
-          </div>
-          <!-- Wall Controls -->
-          <div class="wall-controls">
-            <button id="btn-reset-view" title="Reset View">🔄</button>
-          </div>
-        </div>
-
-        <!-- Selected Hold Info & Actions -->
-        <div class="control-panel selected-hold-panel">
-          <div id="selected-hold-info">Selected Hold: None</div>
-          <div class="form-row">
-            <button id="btn-mark-start" disabled>Mark as Start</button>
-            <button id="btn-mark-finish" disabled>Mark as Finish</button>
-            <button id="btn-remove-hold" class="danger" disabled>
-              Remove from Boulder
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Saved Boulders List -->
-      <div class="boulder-list">
-        <h2>Saved Boulders (<span id="boulder-count">0</span>)</h2>
-        <div id="boulder-items">
-          <p>Loading holds data...</p>
-          <!-- Initial message -->
-        </div>
+        <button class="primary-button" onclick="app.saveBoulder()">
+          Save Boulder
+        </button>
       </div>
     </div>
 
-    <!-- Toast Notifications -->
+    <!-- Toast -->
     <div id="toast" class="toast"></div>
 
-    <!-- Hidden File Input for Importing Boulders -->
-    <input
-      type="file"
-      id="import-file-input"
-      style="display: none"
-      accept=".json"
-    />
+    <!-- Hidden File Input -->
+    <input type="file" id="import-file-input" accept=".json" />
 
-    <!-- Libraries (Panzoom) -->
+    <!-- Libraries -->
     <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
-    <!-- App Script (relative to this HTML file) -->
+
+    <!-- App Script -->
     <script src="src/script.js" defer></script>
   </body>
 </html>
